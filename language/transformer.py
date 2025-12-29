@@ -191,11 +191,28 @@ class Transformer(PreTrainedModel):
             repo,
             config=config,
             tokenizer=tokenizer,
-            device_map=None,          # ⬅️ critical
-            torch_dtype=torch.float32 # ⬅️ avoid implicit CUDA
+            device_map=None,
+            torch_dtype=torch.float32
         )
-        model.to("cpu")              # ⬅️ force it
+        model.device = torch.device('cpu')  # ⬅️ Add this
+        model.to('cpu')
         return model
+        
+    # @classmethod
+    # def from_pretrained(cls, repo, **kwargs):
+    #     print("LOADING PRETRAINED MODEL FROM:", repo)
+    #     config = Config.from_pretrained(repo, repo=repo)
+    #     tokenizer = cls.get_tokenizer(config.tokenizer)
+    
+    #     model = super(Transformer, Transformer).from_pretrained(
+    #         repo,
+    #         config=config,
+    #         tokenizer=tokenizer,
+    #         device_map=None,          # ⬅️ critical
+    #         torch_dtype=torch.float32 # ⬅️ avoid implicit CUDA
+    #     )
+    #     model.to("cpu")              # ⬅️ force it
+    #     return model
 
     # @classmethod
     # def from_pretrained(cls, repo, **kwargs):
@@ -317,22 +334,33 @@ class Transformer(PreTrainedModel):
         return trainer
 
     @torch.no_grad()
-    def generate(self,prompt: str = "", max_length: int | None = None, temperature: float = 1.0, top_k: int | None = None):
-        """The default naive generation method for the model.
-
-        Args:
-            prompt (str, optional): the prompt. Defaults to "".
-            max_length (Optional[int], optional): the generation length, is always capped to the ctx length. Defaults to None.
-            temperature (float, optional): a scale in the logits when sampling, makes outputs more volatile. Defaults to 1.0.
-            top_k (Optional[int], optional): the number of top tokens to choose from. Defaults to None.
-
-        Returns:
-            str: a string with the generated text
-        """
+    def generate(self, prompt: str = "", max_length: int | None = None, temperature: float = 1.0, top_k: int | None = None):
         print("GIT Clone worked")
-        input_ids = self.tokenizer.encode(prompt, return_tensors="pt").to(next(self.parameters()).device)
-        #input_ids = self.tokenizer.encode(prompt, return_tensors="pt").to(self.device)
+        
+        # Use self.device or default to CPU
+        device = getattr(self, 'device', torch.device('cpu'))
+        input_ids = self.tokenizer.encode(prompt, return_tensors="pt").to(device)
+        
         max_length = min(max_length or self.config.n_ctx, self.config.n_ctx - input_ids.size(-1) - 1)
+        # ... rest of the method
+        
+    # @torch.no_grad()
+    # def generate(self,prompt: str = "", max_length: int | None = None, temperature: float = 1.0, top_k: int | None = None):
+    #     """The default naive generation method for the model.
+
+    #     Args:
+    #         prompt (str, optional): the prompt. Defaults to "".
+    #         max_length (Optional[int], optional): the generation length, is always capped to the ctx length. Defaults to None.
+    #         temperature (float, optional): a scale in the logits when sampling, makes outputs more volatile. Defaults to 1.0.
+    #         top_k (Optional[int], optional): the number of top tokens to choose from. Defaults to None.
+
+    #     Returns:
+    #         str: a string with the generated text
+    #     """
+    #     print("GIT Clone worked")
+    #     input_ids = self.tokenizer.encode(prompt, return_tensors="pt").to(next(self.parameters()).device)
+    #     #input_ids = self.tokenizer.encode(prompt, return_tensors="pt").to(self.device)
+    #     max_length = min(max_length or self.config.n_ctx, self.config.n_ctx - input_ids.size(-1) - 1)
         
         for _ in range(max_length):
             logits = self(input_ids).logits
