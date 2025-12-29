@@ -69,7 +69,7 @@ class Rotary(torch.nn.Module):
         self.cos_cached = None
         self.sin_cached = None
 
-    def forward(self, q, k, device="cuda"):
+    def forward(self, q, k, device="cpu"):
         seq_len = q.size(-2)
         
         # Using isinstance does not work, this is necessary for NNSight compatibility
@@ -181,7 +181,7 @@ class Transformer(PreTrainedModel):
         # return AutoTokenizer.from_pretrained(name, pad_token=pad)
     
     @classmethod
-    def from_pretrained(cls, repo, device='cuda', **kwargs):
+    def from_pretrained(cls, repo, device='cpu', **kwargs):
         config = Config.from_pretrained(repo, repo=repo)
         tokenizer = cls.get_tokenizer(config.tokenizer)
         
