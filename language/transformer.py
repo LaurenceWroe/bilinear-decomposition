@@ -59,7 +59,6 @@ def rotate_half(x):
 def apply_rotary_pos_emb(q, k, cos, sin):
     return (q * cos) + (rotate_half(q) * sin), (k * cos) + (rotate_half(k) * sin)
 
-
 class Rotary(torch.nn.Module):
     def __init__(self, dim: int, n_ctx: int, base: int = 10000):
         super().__init__()
@@ -70,7 +69,8 @@ class Rotary(torch.nn.Module):
         self.sin_cached = None
 
     def forward(self, q, k):
-        device = q.device
+        # Force CPU device
+        device = torch.device('cpu')  # ← Add this line
         seq_len = q.size(-2)
         
         # Using isinstance does not work, this is necessary for NNSight compatibility
@@ -85,6 +85,32 @@ class Rotary(torch.nn.Module):
             self.sin_cached = emb.sin()[None, None, :, :]
         
         return apply_rotary_pos_emb(q, k, self.cos_cached, self.sin_cached)
+        
+# class Rotary(torch.nn.Module):
+#     def __init__(self, dim: int, n_ctx: int, base: int = 10000):
+#         super().__init__()
+#         inv_freq = 1.0 / (base ** (torch.arange(0, dim, 2).float() / dim))
+#         self.register_buffer("inv_freq", inv_freq)
+#         self.seq_len_cached = None
+#         self.cos_cached = None
+#         self.sin_cached = None
+
+#     def forward(self, q, k):
+#         device = q.device
+#         seq_len = q.size(-2)
+        
+#         # Using isinstance does not work, this is necessary for NNSight compatibility
+#         if (seq_len != self.seq_len_cached) or type(self.cos_cached) != torch.Tensor:
+#             self.seq_len_cached = seq_len
+            
+#             t = torch.arange(seq_len, device=device).type_as(self.inv_freq)
+#             freqs = torch.einsum("i,j->ij", t, self.inv_freq)
+#             emb = torch.cat((freqs, freqs), dim=-1).to(device)
+            
+#             self.cos_cached = emb.cos()[None, None, :, :]
+#             self.sin_cached = emb.sin()[None, None, :, :]
+        
+#         return apply_rotary_pos_emb(q, k, self.cos_cached, self.sin_cached)
 
 
 class Attention(nn.Module):
