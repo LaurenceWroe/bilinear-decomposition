@@ -182,11 +182,24 @@ class Transformer(PreTrainedModel):
         # return AutoTokenizer.from_pretrained(name, pad_token=pad)
     
     @classmethod
-    def from_pretrained(cls, repo, device='cpu', **kwargs):
+    def from_pretrained(cls, repo, **kwargs):
         config = Config.from_pretrained(repo, repo=repo)
         tokenizer = cls.get_tokenizer(config.tokenizer)
-        
-        return super(Transformer, Transformer).from_pretrained(repo, config=config, tokenizer=tokenizer, device_map=device, **kwargs)
+    
+        model = super(Transformer, Transformer).from_pretrained(
+            repo,
+            config=config,
+            tokenizer=tokenizer,
+            **kwargs
+        )
+        return model
+
+    #@classmethod
+    #def from_pretrained(cls, repo, device='cpu', **kwargs):
+    #    config = Config.from_pretrained(repo, repo=repo)
+    #    tokenizer = cls.get_tokenizer(config.tokenizer)
+    #    
+    #    return super(Transformer, Transformer).from_pretrained(repo, config=config, tokenizer=tokenizer, device_map=device, **kwargs)
     
     @classmethod
     def from_config(cls, *args, **kwargs):
