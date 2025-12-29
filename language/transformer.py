@@ -180,9 +180,10 @@ class Transformer(PreTrainedModel):
         
         return AutoTokenizer.from_pretrained(name, pad_token=pad, padding_side="right")
         # return AutoTokenizer.from_pretrained(name, pad_token=pad)
-    
+
     @classmethod
     def from_pretrained(cls, repo, **kwargs):
+        print("LOADING PRETRAINED MODEL FROM:", repo)
         config = Config.from_pretrained(repo, repo=repo)
         tokenizer = cls.get_tokenizer(config.tokenizer)
     
@@ -190,9 +191,24 @@ class Transformer(PreTrainedModel):
             repo,
             config=config,
             tokenizer=tokenizer,
-            **kwargs
+            device_map=None,          # ⬅️ critical
+            torch_dtype=torch.float32 # ⬅️ avoid implicit CUDA
         )
+        model.to("cpu")              # ⬅️ force it
         return model
+
+    # @classmethod
+    # def from_pretrained(cls, repo, **kwargs):
+    #     config = Config.from_pretrained(repo, repo=repo)
+    #     tokenizer = cls.get_tokenizer(config.tokenizer)
+    
+    #     model = super(Transformer, Transformer).from_pretrained(
+    #         repo,
+    #         config=config,
+    #         tokenizer=tokenizer,
+    #         **kwargs
+    #     )
+    #     return model
 
     #@classmethod
     #def from_pretrained(cls, repo, device='cpu', **kwargs):
