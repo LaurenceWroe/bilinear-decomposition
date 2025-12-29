@@ -69,7 +69,8 @@ class Rotary(torch.nn.Module):
         self.cos_cached = None
         self.sin_cached = None
 
-    def forward(self, q, k, device="cpu"):
+    def forward(self, q, k):
+        device = q.device
         seq_len = q.size(-2)
         
         # Using isinstance does not work, this is necessary for NNSight compatibility
