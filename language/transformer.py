@@ -299,7 +299,8 @@ class Transformer(PreTrainedModel):
         Returns:
             str: a string with the generated text
         """
-        input_ids = self.tokenizer.encode(prompt, return_tensors="pt").to(self.device)
+        input_ids = self.tokenizer.encode(prompt, return_tensors="pt").to(next(self.parameters()).device)
+        #input_ids = self.tokenizer.encode(prompt, return_tensors="pt").to(self.device)
         max_length = min(max_length or self.config.n_ctx, self.config.n_ctx - input_ids.size(-1) - 1)
         
         for _ in range(max_length):
