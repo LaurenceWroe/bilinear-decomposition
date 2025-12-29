@@ -335,39 +335,103 @@ class Transformer(PreTrainedModel):
 
     @torch.no_grad()
     def generate(self, prompt: str = "", max_length: int | None = None, temperature: float = 1.0, top_k: int | None = None):
-        """The default naive generation method for the model.
-    
-        Args:
-            prompt (str, optional): the prompt. Defaults to "".
-            max_length (Optional[int], optional): the generation length, is always capped to the ctx length. Defaults to None.
-            temperature (float, optional): a scale in the logits when sampling, makes outputs more volatile. Defaults to 1.0.
-            top_k (Optional[int], optional): the number of top tokens to choose from. Defaults to None.
-    
-        Returns:
-            str: a string with the generated text
-        """
-        print("GIT Clone worked")
+        """The default naive generation method for the model."""
+        print("=== GENERATE START ===")
         
-        # Use self.device or default to CPU
-        device = getattr(self, 'device', torch.device('cpu'))
-        input_ids = self.tokenizer.encode(prompt, return_tensors="pt").to(device)
-        
-        max_length = min(max_length or self.config.n_ctx, self.config.n_ctx - input_ids.size(-1) - 1)
-        
-        for _ in range(max_length):
-            logits = self(input_ids).logits
-            logits = logits[:, -1, :] / temperature
+        try:
+            # Explicitly use CPU
+            device = torch.device('cpu')
+            print(f"1. Set target device: {device}")
             
-            if top_k is not None:
-                v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
-                logits[logits < v[:, [-1]]] = -torch.inf
+            # Check model location
+            print(f"2. Model parameters device: {next(self.parameters()).device}")
+            
+            # Ensure model is on CPU
+            self.to(device)
+            print(f"3. Moved model to CPU")
+            
+            # Tokenize
+            print(f"4. Tokenizing prompt: {prompt}")
+            input_ids = self.tokenizer.encode(prompt, return_tensors="pt")
+            print(f"5. Input_ids device before .to(): {input_ids.device}")
+            
+            input_ids = input_ids.to(device)
+            print(f"6. Input_ids device after .to(): {input_ids.device}")
+            
+            max_length = min(max_length or self.config.n_ctx, self.config.n_ctx - input_ids.size(-1) - 1)
+            print(f"7. Max length: {max_length}")
+            
+            for i in range(max_length):
+                print(f"\n--- Iteration {i+1}/{max_length} ---")
+                
+                try:
+                    print(f"8.{i}.1 Calling forward pass...")
+                    logits = self(input_ids).logits
+                    print(f"8.{i}.2 Logits device: {logits.device}, shape: {logits.shape}")
+                except Exception as e:
+                    print(f"ERROR in forward pass: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    raise
+                
+                try:
+                    print(f"8.{i}.3 Applying temperature...")
+                    logits = logits[:, -1, :] / temperature
+                    print(f"8.{i}.4 Logits after temperature device: {logits.device}")
+                except Exception as e:
+                    print(f"ERROR applying temperature: {e}")
+                    raise
+                
+                if top_k is not None:
+                    try:
+                        print(f"8.{i}.5 Applying top_k filtering...")
+                        v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
+                        logits[logits < v[:, [-1]]] = -torch.inf
+                        print(f"8.{i}.6 After top_k, logits device: {logits.device}")
+                    except Exception as e:
+                        print(f"ERROR in top_k filtering: {e}")
+                        raise
     
-            probs = torch.nn.functional.softmax(logits, dim=-1)
-            next_id = torch.multinomial(probs, num_samples=1)
-            input_ids = torch.cat((input_ids, next_id), dim=1)
+                try:
+                    print(f"8.{i}.7 Computing softmax...")
+                    probs = torch.nn.functional.softmax(logits, dim=-1)
+                    print(f"8.{i}.8 Probs device: {probs.device}")
+                except Exception as e:
+                    print(f"ERROR in softmax: {e}")
+                    raise
+                
+                try:
+                    print(f"8.{i}.9 Sampling with multinomial...")
+                    probs_cpu = probs.cpu()
+                    print(f"8.{i}.10 Probs_cpu device: {probs_cpu.device}")
+                    next_id = torch.multinomial(probs_cpu, num_samples=1)
+                    print(f"8.{i}.11 Next_id device: {next_id.device}")
+                    next_id = next_id.to(device)
+                    print(f"8.{i}.12 Next_id after .to(device): {next_id.device}")
+                except Exception as e:
+                    print(f"ERROR in multinomial sampling: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    raise
+                
+                try:
+                    print(f"8.{i}.13 Concatenating...")
+                    input_ids = torch.cat((input_ids, next_id), dim=1)
+                    print(f"8.{i}.14 Input_ids device: {input_ids.device}, shape: {input_ids.shape}")
+                except Exception as e:
+                    print(f"ERROR in concatenation: {e}")
+                    raise
     
-        out = self.tokenizer.decode(input_ids[0], skip_special_tokens=True)
-        return out.replace(" ##", "")
+            print(f"\n9. Decoding...")
+            out = self.tokenizer.decode(input_ids[0], skip_special_tokens=True)
+            print(f"10. Done! Output length: {len(out)}")
+            return out.replace(" ##", "")
+            
+        except Exception as e:
+            print(f"\n!!! FATAL ERROR in generate: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
 
     # @torch.no_grad()
     # def generate(self, prompt: str = "", max_length: int | None = None, temperature: float = 1.0, top_k: int | None = None):
